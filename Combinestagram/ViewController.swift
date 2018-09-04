@@ -14,9 +14,10 @@ class ViewController: UIViewController {
        let imageView = UIImageView()
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.backgroundColor = .yellow
+        imageView.clipsToBounds = true
         imageView.layer.borderColor = UIColor.black.cgColor
         imageView.layer.borderWidth = 3
-        imageView.layer.cornerRadius = 8
+        imageView.layer.cornerRadius = 15
         
         return imageView
     }()
