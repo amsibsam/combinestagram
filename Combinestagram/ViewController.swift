@@ -14,6 +14,8 @@ class ViewController: UIViewController {
        let imageView = UIImageView()
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.backgroundColor = .yellow
+        imageView.layer.borderColor = UIColor.black.cgColor
+        imageView.layer.borderWidth = 3
         imageView.layer.cornerRadius = 8
         
         return imageView
@@ -48,9 +50,12 @@ class ViewController: UIViewController {
     
     let disposeBag = DisposeBag()
     let images = Variable<[UIImage]>([])
+    
+    var imageCache = [Int]()
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
         setupUI()
         images.asObservable().subscribe(onNext: { pickedImages in
             self.image.image = UIImage.collage(images: pickedImages, size: self.image.frame.size)
@@ -113,18 +118,43 @@ class ViewController: UIViewController {
         self.navigationController?.present(imagePicker, animated: true, completion: nil)
     }
     
+    private func updateNavigationBar() {
+        let icon = image.image?.scaled(CGSize(width: 22, height: 22)).withRenderingMode(.alwaysOriginal)
+        
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: icon, style: UIBarButtonItemStyle.done, target: nil, action: nil)
+    }
+    
     //MARK: button action
     @objc func addItem() {
         let photoVC = PhotosViewController()
-        photoVC.selectedPhoto.subscribe(onNext: { (image) in
+        
+        let newPhoto = photoVC.selectedPhoto.share()
+        
+        newPhoto.filter({ (image) -> Bool in
+            image.size.width > image.size.height
+        }).filter({ (image) -> Bool in
+            let length = UIImagePNGRepresentation(image)?.count ?? 0
+            
+            guard self.imageCache.contains(length) == false else {
+                return false
+            }
+            self.imageCache.append(length)
+            return true
+        }).subscribe(onNext: { (image) in
             self.images.value.append(image)
         }).disposed(by: disposeBag)
+        
+        newPhoto
+            .ignoreElements().subscribe(onCompleted: {
+                self.updateNavigationBar()
+            }).disposed(by: disposeBag)
+        
         self.navigationController?.pushViewController(photoVC, animated: true)
-//        openImagePicker()
     }
     
     @objc func clear() {
         images.value.removeAll()
+        imageCache.removeAll()
     }
     
     @objc func save() {
